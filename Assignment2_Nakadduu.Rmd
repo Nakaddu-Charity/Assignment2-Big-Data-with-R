@@ -27,6 +27,10 @@ suppressPackageStartupMessages({
   library(WDI)          # World Bank data interface
   library(knitr)        # Table formatting
 })
+# Clear any existing files to avoid duplicates
+if (dir_exists("Assignment2")) {
+  file_delete(list.files("Assignment2", pattern = "\\.csv$", full.names = TRUE))
+}
 
 Execution
 1. Create Directory "Assignment2" [10 MARKS]
