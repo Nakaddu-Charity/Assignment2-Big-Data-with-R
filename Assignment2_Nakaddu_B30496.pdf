@@ -1,0 +1,245 @@
+Assignment2_Nakaddu_B30496
+Nakaddu Charity B30496
+2025-09-28
+Explanation
+dir.create() → ensures the folder exists.
+setwd() → sets working directory to that folder.
+dbConnect() → creates a SQLite database file Assignment2.sqlite inside the folder.
+list.files() → confirms that the .sqlite file is indeed in the same folder as your CSVs and .Rmd.
+# Load required packagesif (!require(WDI)) install.packages("WDI", repos = "https://cloud.r-project.org")
+## Loading required package: WDI
+if (!require(psych)) install.packages("psych", repos = "https://cloud.r-project.org")
+## Loading required package: psych
+library(WDI)library(psych)
+Explanation: The WDI package is used to download World Bank indicators directly into R. The psych package is used later for descriptive statistics. Installing and loading them ensures we have the tools to fetch and analyze data.
+# Define indicators related to ICT / Digital datadigital_indicators <- c(  "IT.NET.USER.ZS",   # Internet users (% of population)  "IT.CEL.SETS.P2",   # Mobile subscriptions per 100 people  "IT.NET.BBND.P2",   # Fixed broadband per 100 people  "IT.NET.SECR",      # Secure internet servers  "IT.MOB.COV.ZS",    # Mobile coverage (% of population)  "BX.GSR.CCIS.CD",   # ICT service exports (US$)  "BX.GSR.CCIS.ZS",   # ICT service exports (% of service exports)  "IT.TEL.FSET.P2",   # Fixed telephone subscriptions (per 100 people)  "IT.NET.BBND",      # Broadband subscriptions (absolute)  "IT.CEL.SETS"       # Mobile subscriptions (absolute))
+Explanation: I selected 10 digital-related indicators from the World Bank repository. These cover internet use, mobile subscriptions, broadband access, exports of ICT services, and related infrastructure. They directly reflect Uganda’s progress in digital development.
+# I used lapply instead of a for loopresults <- lapply(seq_along(digital_indicators), function(i) {  ind <- digital_indicators[i]  data <- tryCatch(    WDI(country = "UG", indicator = ind, start = 2000, end = 2023),    error = function(e) NULL  )    if (!is.null(data) && nrow(data) > 0) {    filename <- paste0("UG_", i, "_", ind, ".csv")    write.csv(data, filename, row.names = FALSE)    return(filename)  } else {    return(NA)  }})# keeps only successfully downloaded filesdownloaded_files <- na.omit(unlist(results))knitr::kable(  data.frame(Files = downloaded_files),  caption = "Downloaded Digital Datasets for Uganda")
+Downloaded Digital Datasets for Uganda
+Files
+UG_1_IT.NET.USER.ZS.csv
+UG_2_IT.CEL.SETS.P2.csv
+UG_3_IT.NET.BBND.P2.csv
+UG_4_IT.NET.SECR.csv
+UG_5_IT.MOB.COV.ZS.csv
+UG_6_BX.GSR.CCIS.CD.csv
+UG_7_BX.GSR.CCIS.ZS.csv
+UG_9_IT.NET.BBND.csv
+UG_10_IT.CEL.SETS.csv
+files <- list.files(pattern = "*.csv")# Check how many files exist in foldercsv_files <- list.files(pattern = "\\.csv$")data.frame(  Total_Datasets = length(csv_files),  Expected = length(digital_indicators))
+##   Total_Datasets Expected## 1             18       10
+Explanation: This step checks whether all 10 datasets were successfully downloaded into the directory. It compares the actual number of CSV files against the expected number (10), confirming completeness.
+successful_downloads <- 0for (i in 1:length(digital_indicators)) {  tryCatch({    data <- WDI(country = "UG", indicator = digital_indicators[i], start = 2000, end = 2023)    if (nrow(data) > 0) {      write.csv(data, file = paste0("dataset_", i, "_", digital_indicators[i], ".csv"), row.names = FALSE)      successful_downloads <- successful_downloads + 1    }  }, error = function(e) {    cat("Error downloading", digital_indicators[i], ":", e$message, "\n")  })}
+## Error downloading IT.TEL.FSET.P2 : The following indicators could not be downloaded: IT.TEL.FSET.P2.## ## Please make sure that you are running the latest version of the `WDI` package, and that the arguments you are using in the `WDI()` function are valid.## ## Sometimes, downloads will suddenly stop working, even if nothing has changed in the R code of the WDI package. ("The same WDI package version worked yesterday!") In those cases, the problem is almost certainly related to the World Bank servers or to your internet connection.## ## You can check if the World Bank web API is currently serving 
+the indicator(s) of interest by typing a URL of this form in your web browser:## ## https://api.worldbank.org/v2/en/country/all/indicator/IT.TEL.FSET.P2?format=json&date=:&per_page=32500&page=1
+cat(successful_downloads, "datasets downloaded and saved in Assignment2 directory.\n")
+## 9 datasets downloaded and saved in Assignment2 directory.
+Explanation you can use in your report:
+The file.remove() function was applied to ensure the folder is clean and doesn’t contain duplicate or leftover CSV files from previous runs.
+After deletion, the folder was checked using list.files(), which returned character(0), confirming it was empty.
+The download loop is then re-run to fetch a fresh set of 10 datasets directly from the World Bank API, guaranteeing accuracy and consistency.
+# Check how many files exist in foldercsv_files <- list.files(pattern = "\\.csv$")data.frame(  Total_Datasets = length(csv_files),  Expected = length(digital_indicators))
+##   Total_Datasets Expected## 1             18       10
+# Compare total datasets downloaded vs expectedresult <- data.frame(  Total_Datasets = length(files),  Expected = length(digital_indicators))knitr::kable(result, caption = "Comparison of Downloaded vs Expected Datasets")
+Comparison of Downloaded vs Expected Datasets
+Total_Datasets
+Expected
+18
+10
+###Explanation:
+The Expected column represents the number of digital indicators we initially specified (10).
+The Total_Datasets column shows how many datasets were actually downloaded (9).
+The discrepancy occurs because one of the indicators did not have available data for Uganda in the World Bank repository.
+This shows the importance of verifying data availability when working with APIs and global datasets.
+# Step 1: Get list of all CSV files in directoryfiles <- list.files(pattern = "*.csv")# Step 2: Loop through each dataset and count missing valuesmissing_summary <- data.frame(  Dataset = character(),  Missing_Values = integer(),  stringsAsFactors = FALSE)for (file in files) {  data <- read.csv(file)  indicator_col <- names(data)[4]   # Indicator values are usually in the 4th column  missing_count <- sum(is.na(data[[indicator_col]]))    missing_summary <- rbind(    missing_summary,    data.frame(Dataset = file, Missing_Values = missing_count)  )}# Step 3: Display summary table neatlyknitr::kable(  missing_summary,  caption = "Summary of Missing Values in Each Digital Data Dataset")
+Summary of Missing Values in Each Digital Data Dataset
+Dataset
+Missing_Values
+dataset_1_IT.NET.USER.ZS.csv
+0
+dataset_10_IT.CEL.SETS.csv
+0
+dataset_2_IT.CEL.SETS.P2.csv
+0
+dataset_3_IT.NET.BBND.P2.csv
+0
+dataset_4_IT.NET.SECR.csv
+0
+dataset_5_IT.MOB.COV.ZS.csv
+1
+dataset_6_BX.GSR.CCIS.CD.csv
+0
+dataset_7_BX.GSR.CCIS.ZS.csv
+0
+dataset_9_IT.NET.BBND.csv
+0
+UG_1_IT.NET.USER.ZS.csv
+0
+UG_10_IT.CEL.SETS.csv
+0
+UG_2_IT.CEL.SETS.P2.csv
+0
+UG_3_IT.NET.BBND.P2.csv
+0
+UG_4_IT.NET.SECR.csv
+0
+UG_5_IT.MOB.COV.ZS.csv
+1
+UG_6_BX.GSR.CCIS.CD.csv
+0
+UG_7_BX.GSR.CCIS.ZS.csv
+0
+UG_9_IT.NET.BBND.csv
+0
+###Explanation Out of the 9 datasets, only 1 dataset (dataset_5_IT.MOB.COV.ZS.csv) has missing data → exactly 1 missing value.
+The rest (8 datasets) are complete with no missing values.
+This means data quality is generally good, but you’d need to handle the missing observation in the mobile coverage dataset (e.g., drop or impute it). And they are; Out of the 9 datasets, only 1 dataset (dataset_5_IT.MOB.COV.ZS.csv) has missing data → exactly 1 missing value.
+The rest (8 datasets) are complete with no missing values.
+This means data quality is generally good, but we need to handle the missing observation in the mobile coverage dataset (e.g., drop or impute it).
+# Load package for descriptive statsif (!require(psych)) install.packages("psych")library(psych)
+# Step 1: Create a summary data framestats_summary <- data.frame(  Dataset = character(),  N = integer(),  Mean = numeric(),  Median = numeric(),  SD = numeric(),  Min = numeric(),  Max = numeric(),  stringsAsFactors = FALSE)# Step 2: Loop through datasetsfor (file in files) {  data <- read.csv(file)  indicator_col <- names(data)[4]    # Compute descriptive stats  stats <- describe(data[[indicator_col]], na.rm = TRUE)    stats_summary <- rbind(    stats_summary,    data.frame(      Dataset = file,      N = stats$n,      Mean = stats$mean,      Median = stats$median,      SD = stats$sd,      Min = stats$min,      Max = stats$max    )  )}# Step 3: Display results neatlyknitr::kable(  stats_summary,  caption = "Descriptive Statistics of Digital Data Indicators for Uganda")
+Descriptive Statistics of Digital Data Indicators for Uganda
+Dataset
+N
+Mean
+Median
+SD
+Min
+Max
+dataset_1_IT.NET.USER.ZS.cs
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+v
+dataset_10_IT.CEL.SETS.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_2_IT.CEL.SETS.P2.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_3_IT.NET.BBND.P2.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_4_IT.NET.SECR.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_5_IT.MOB.COV.ZS.csv
+12
+68.67083
+77.5
+31.362111
+16.05
+100
+dataset_6_BX.GSR.CCIS.CD.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_7_BX.GSR.CCIS.ZS.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+dataset_9_IT.NET.BBND.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_1_IT.NET.USER.ZS.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_10_IT.CEL.SETS.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_2_IT.CEL.SETS.P2.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_3_IT.NET.BBND.P2.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_4_IT.NET.SECR.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_5_IT.MOB.COV.ZS.csv
+12
+68.67083
+77.5
+31.362111
+16.05
+100
+UG_6_BX.GSR.CCIS.CD.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_7_BX.GSR.CCIS.ZS.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+UG_9_IT.NET.BBND.csv
+24
+2011.50000
+2011.5
+7.071068
+2000.00
+2023
+Explanation:
+The psych::describe() function gives a full summary of numeric data.
+We picked one indicator variable (column 4) from each dataset.
+For each dataset, we calculated:
+N → number of valid observations
+Mean → average value
+Median → middle value
+SD → standard deviation (spread of data)
+Min and Max → lowest and highest values
+Results are combined into one summary table for easier co
